@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "aiohttp-api-gateway"
+version = "0.1.0"
+description = "A generic HTTP REST API wrapper tool for any website that does not have a stable REST API."
+authors = ["EnigmaCurry <ryan@enigmacurry.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiohttp = "^3.8.1"
+beautifulsoup4 = "^4.10.0"
+Mako = "^1.2.0"
+aiohttp-basicauth = "^1.0.0"
+gunicorn = "^20.1.0"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
