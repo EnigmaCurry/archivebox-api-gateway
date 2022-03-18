@@ -2,7 +2,6 @@ import hashlib
 import urllib
 from mako.template import Template
 from aiohttp import web, ClientSession
-from aiohttp_basicauth import BasicAuthMiddleware
 
 from . import client
 from .config import config
@@ -18,18 +17,8 @@ def verify_key(key, url):
     return page_key_hash(config["SECRET_KEY"], url) == key
 
 
-## Frontend HTTP Basic Authentication required for adding new URLs and getting links:
-admin_auth = BasicAuthMiddleware(
-    username=config["ADMIN_BASIC_AUTH_USERNAME"],
-    password=config["ADMIN_BASIC_AUTH_PASSWORD"],
-    force=False,
-)
-
-
 ### Root handler with form to add new URLs:
-### Admin HTTP Basic Authentication required:
 @routes.get(f"{config['PREFIX_PATH']}/")
-@admin_auth.required
 async def index(request):
     template = Template(
         """
@@ -44,9 +33,7 @@ async def index(request):
 
 
 ### Handler for adding new URLs:
-### Admin HTTP Basic Authentication required:
 @routes.post(f"{config['PREFIX_PATH']}/page")
-@admin_auth.required
 async def add_page(request):
     data = await request.post()
     url = data["url"]
@@ -94,6 +81,6 @@ async def get_page(request):
 
 
 async def app():
-    a = web.Application(middlewares=[admin_auth])
+    a = web.Application()
     a.add_routes(routes)
     return a

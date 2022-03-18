@@ -33,8 +33,6 @@ def get_config():
     require_var("SECRET_KEY")
     ## Frontend:
     require_var("API_BASE_URL")
-    require_var("ADMIN_BASIC_AUTH_USERNAME")
-    require_var("ADMIN_BASIC_AUTH_PASSWORD")
     load_var("PREFIX_PATH", "")
     ## Backend:
     require_var("ARCHIVEBOX_BASE_URL")
