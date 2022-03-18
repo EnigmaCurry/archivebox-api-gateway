@@ -12,6 +12,5 @@ COPY ./pyproject.toml ./poetry.lock* /app/
 RUN poetry install --no-root --no-dev
 
 EXPOSE 8000
-
 COPY . /app
 CMD gunicorn archivebox_api.server:app --worker-class aiohttp.GunicornWebWorker
