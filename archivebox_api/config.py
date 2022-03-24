@@ -31,9 +31,15 @@ def get_config():
 
     ## Secret key for hashing URLs:
     require_var("SECRET_KEY")
+    if len(cfg["SECRET_KEY"]) < 32:
+        raise ConfigError(
+            f"SECRET_KEY must be at least 32 chars long, it is only {len(cfg['SECRET_KEY'])}"
+        )
     ## Frontend:
     require_var("API_BASE_URL")
-    load_var("PREFIX_PATH", "")
+    load_var("PATH_PREFIX", "")
+    cfg["API_BASE_URL"] = f"{cfg['API_BASE_URL']}{cfg['PATH_PREFIX']}"
+    load_var("LOG_LEVEL", "WARN")
     ## Backend:
     require_var("ARCHIVEBOX_BASE_URL")
     require_var("ARCHIVEBOX_USERNAME")

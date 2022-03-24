@@ -5,6 +5,12 @@ from aiohttp import web, ClientSession
 
 from . import client
 from .config import config
+from .errors import error_middleware
+
+from .logs import setup_logs
+import logging
+
+setup_logs()
 
 routes = web.RouteTableDef()
 
@@ -18,22 +24,25 @@ def verify_key(key, url):
 
 
 ### Root handler with form to add new URLs:
-@routes.get(f"{config['PREFIX_PATH']}/")
+@routes.get(f"{config['PATH_PREFIX']}/")
 async def index(request):
     template = Template(
         """
-<form action="/page" method="post">
+<form action="${path_prefix}/page" method="post">
   <label for="url">URL:</label><br/>
   <input type="text" id="url" name="url"/><br/>
   <input type="submit" value="Get Archive Link"/>
 </form>
 """
     )
-    return web.Response(text=template.render(), content_type="text/html")
+    return web.Response(
+        text=template.render(path_prefix=config["PATH_PREFIX"]),
+        content_type="text/html",
+    )
 
 
 ### Handler for adding new URLs:
-@routes.post(f"{config['PREFIX_PATH']}/page")
+@routes.post(f"{config['PATH_PREFIX']}/page")
 async def add_page(request):
     data = await request.post()
     url = data["url"]
@@ -44,8 +53,8 @@ async def add_page(request):
     except KeyError:
         return web.HTTPNotFound(text="No archived page found")
 
-    url = urllib.parse.quote_plus(url)
     key = page_key_hash(config["SECRET_KEY"], url)
+    url = urllib.parse.quote_plus(url)
 
     return web.json_response(
         {"url": f"{config['API_BASE_URL']}/page?url={url}&key={key}"}
@@ -54,7 +63,7 @@ async def add_page(request):
 
 ### Handler for retrieving archived page URL:
 ### Anonymous access requires a preshared page key:
-@routes.get(f"{config['PREFIX_PATH']}/page")
+@routes.get(f"{config['PATH_PREFIX']}/page")
 async def get_page(request):
     url = request.query["url"]
     key = request.query["key"]
@@ -74,13 +83,14 @@ async def get_page(request):
                 return web.HTTPInternalServerError(
                     f"archive page returned status {response.status}"
                 )
-            print(response)
             page = await response.text()
-            print(page)
             return web.Response(text=page, content_type="text/html")
 
 
 async def app():
+    log = logging.getLogger(__name__)
+    log.info("Starting..")
     a = web.Application()
     a.add_routes(routes)
+    a.middlewares.append(error_middleware)
     return a
