@@ -11,6 +11,7 @@ from .logs import setup_logs
 import logging
 
 setup_logs()
+log = logging.getLogger(__name__)
 
 routes = web.RouteTableDef()
 
@@ -47,17 +48,21 @@ async def add_page(request):
     data = await request.post()
     url = data["url"]
 
-    files = await client.get_archive(url)
+    archive = await client.get_archive(url)
+    log.debug(archive)
     try:
-        singlefile = files["singlefile"]
+        singlefile = archive["files"]["singlefile"]
     except KeyError:
         return web.HTTPNotFound(text="No archived page found")
 
     key = page_key_hash(config["SECRET_KEY"], url)
-    url = urllib.parse.quote_plus(url)
 
     return web.json_response(
-        {"url": f"{config['API_BASE_URL']}/page?url={url}&key={key}"}
+        {
+            "url": f"{config['API_BASE_URL']}/page?url={urllib.parse.quote_plus(url)}&key={key}",
+            "original_url": url,
+            **archive,
+        }
     )
 
 
@@ -72,9 +77,9 @@ async def get_page(request):
     if not verify_key(key, url):
         return web.HTTPUnauthorized(text="Invalid page key hash")
 
-    files = await client.get_archive(url)
+    archive = await client.get_archive(url)
     try:
-        url = files["singlefile"]
+        url = f"{archive['files']['singlefile']}"
     except KeyError:
         return web.HTTPNotFound(text="No archived page found")
     async with client.client_session() as session:
@@ -88,7 +93,6 @@ async def get_page(request):
 
 
 async def app():
-    log = logging.getLogger(__name__)
     log.info("Starting..")
     a = web.Application()
     a.add_routes(routes)

@@ -4,6 +4,10 @@ import urllib
 from bs4 import BeautifulSoup
 from .config import config
 
+import logging
+
+log = logging.getLogger(__name__)
+
 
 def client_session():
     return aiohttp.ClientSession(
@@ -56,6 +60,7 @@ async def login(session):
 
 async def add_url(url, parser="auto", tag="", depth=0, archive_methods=""):
     """Add URL for ArchiveBox to archive"""
+    log.info(f"Adding URL: {url}")
     async with client_session() as session:
         await login(session)
         ## Get the Add URL page to parse the CSRF Middleware Token:
@@ -75,10 +80,13 @@ async def add_url(url, parser="auto", tag="", depth=0, archive_methods=""):
                 raise AssertionError(
                     f"Could not add URL, response={response.status}, url={response.url}"
                 )
+            soup = BeautifulSoup(await response.text(), "html.parser")
+            print(soup)
 
 
 async def search_url(url):
     """Search for an already archived URL"""
+    log.info(f"Searching for URL: {url}")
     async with client_session() as session:
         async with session.get(
             f"/public/?q={urllib.parse.quote_plus(url)}"
@@ -87,16 +95,26 @@ async def search_url(url):
                 raise AssertionError(
                     "Could not get the search results. response={response.status}, url={response.url}"
                 )
-            data = await response.text()
-            files = {}
+            data = {}
 
-            soup = BeautifulSoup(data, "html.parser")
-            for span in soup.find(id="table-bookmarks").find_all("span"):
+            soup = BeautifulSoup(await response.text(), "html.parser")
+            # Find the first row of the results only:
+            row = soup.find(id="table-bookmarks").find("tbody").find("tr")
+            if row == None:
+                log.info(f"No results found for URL: {url}")
+                return {}
+            columns = row.find_all("td")
+            data["date"] = columns[0].get_text().strip()
+            data["title"] = columns[1].find("span").get_text().strip()
+            # Find all archive file types (singlefile, warc, etc):
+            data["files"] = {}
+            for span in columns[2].find_all("span"):
                 if span.has_attr("class") and "files-icons" in span["class"]:
                     for a in span.find_all("a"):
                         if a.has_attr("class") and "exists-True" in a["class"]:
-                            files[a["title"]] = a["href"]
-            return files
+                            data["files"][a["title"]] = a["href"]
+                            log.info(f"Found cached URL: {url}")
+            return data
 
 
 async def get_archive(url):
@@ -104,7 +122,7 @@ async def get_archive(url):
     if len(existing):
         return existing
     else:
-        await add_url(url, archive_methods="singlefile")
+        await add_url(url, archive_methods=["singlefile", "title"])
         return await search_url(url)
 
 

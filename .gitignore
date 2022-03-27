@@ -1,3 +1,4 @@
 .env
 archivebox_api/__pycache__
 .#*
+*.mbp
